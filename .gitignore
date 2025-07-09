@@ -1,0 +1,47 @@
+# Build artifacts
+build/
+build-*/
+*.o
+*.obj
+*.lib
+*.dll
+*.so
+*.dylib
+*.a
+
+# Generated files
+*.vcxproj.user
+*.sdf
+*.opensdf
+*.db
+*.opendb
+
+# IDE files
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Platform specific
+Thumbs.db
+.DS_Store
+
+# Test outputs
+test_results/
+*.log
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!cmake/*.cmake*
+
+# Package files
+*.deb
+*.rpm
+*.msi
+*.pkg
