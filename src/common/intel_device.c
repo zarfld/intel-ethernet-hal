@@ -11,17 +11,10 @@
 ******************************************************************************/
 
 #include "../include/intel_ethernet_hal.h"
+#include "../intel_hal_private.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* Internal device structure */
-struct intel_device {
-    intel_device_info_t info;
-    bool is_open;
-    void *platform_data;
-    uint32_t ref_count;
-};
 
 /* Device capability database */
 typedef struct {

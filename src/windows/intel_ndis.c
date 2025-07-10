@@ -11,9 +11,12 @@
 ******************************************************************************/
 
 #include "../include/intel_ethernet_hal.h"
+#include "../intel_hal_private.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <ctype.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
@@ -30,7 +33,7 @@ static void set_last_error(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    vsnprintf_s(last_error_message, sizeof(last_error_message), _TRUNCATE, format, args);
+    _vsnprintf_s(last_error_message, sizeof(last_error_message), _TRUNCATE, format, args);
     va_end(args);
 }
 
@@ -47,7 +50,7 @@ static intel_hal_result_t query_ndis_timestamp_caps(intel_device_t *device)
     
     /* Open adapter handle for NDIS queries */
     char adapter_path[512];
-    snprintf_s(adapter_path, sizeof(adapter_path), _TRUNCATE,
+    _snprintf_s(adapter_path, sizeof(adapter_path), _TRUNCATE,
                "\\\\.\\Global\\NDIS_Adapter_%s", info->windows.adapter_name);
     
     adapter_handle = CreateFile(adapter_path, 
@@ -87,7 +90,7 @@ static intel_hal_result_t query_ndis_timestamp_caps(intel_device_t *device)
     
     printf("Windows NDIS: Native timestamp support detected\n");
     printf("  Hardware timestamp: %s\n", caps.HardwareClockFrequencyHz ? "YES" : "NO");
-    printf("  Software timestamp: %s\n", caps.SoftwareTimestampFlags ? "YES" : "NO");
+    printf("  Hardware frequency: %I64u Hz\n", caps.HardwareClockFrequencyHz);
     printf("  Cross timestamp: %s\n", caps.CrossTimestamp ? "YES" : "NO");
     
     return INTEL_HAL_SUCCESS;
@@ -99,97 +102,93 @@ static intel_hal_result_t query_ndis_timestamp_caps(intel_device_t *device)
 static intel_hal_result_t find_intel_adapter_by_device_id(uint16_t device_id, 
                                                          intel_device_info_t *info)
 {
-    PIP_ADAPTER_ADDRESSES adapters = NULL;
-    PIP_ADAPTER_ADDRESSES current_adapter;
-    ULONG buffer_length = 0;
-    DWORD result;
+    HKEY network_class_key;
+    char registry_path[] = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}";
     bool found = false;
     
-    /* Get required buffer size */
-    result = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, 
-                                 adapters, &buffer_length);
-    
-    if (result != ERROR_BUFFER_OVERFLOW) {
-        set_last_error("GetAdaptersAddresses size query failed: %lu", result);
+    /* Open the network device class registry key */
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, registry_path, 0, KEY_READ, &network_class_key) != ERROR_SUCCESS) {
+        set_last_error("Failed to open network device class registry key");
         return INTEL_HAL_ERROR_OS_SPECIFIC;
     }
     
-    /* Allocate buffer */
-    adapters = (PIP_ADAPTER_ADDRESSES)malloc(buffer_length);
-    if (!adapters) {
-        set_last_error("Failed to allocate adapter buffer");
-        return INTEL_HAL_ERROR_NO_MEMORY;
-    }
-    
-    /* Get adapter information */
-    result = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL,
-                                 adapters, &buffer_length);
-    
-    if (result != NO_ERROR) {
-        free(adapters);
-        set_last_error("GetAdaptersAddresses failed: %lu", result);
-        return INTEL_HAL_ERROR_OS_SPECIFIC;
-    }
-    
-    /* Search for Intel adapter with matching device ID */
-    for (current_adapter = adapters; current_adapter; current_adapter = current_adapter->Next) {
-        /* Check if this is an Ethernet adapter */
-        if (current_adapter->IfType != IF_TYPE_ETHERNET_CSMACD) {
+    /* Enumerate all network device instances */
+    for (DWORD index = 0; !found; index++) {
+        char subkey_name[256];
+        DWORD name_size = sizeof(subkey_name);
+        
+        /* Get next device subkey name */
+        if (RegEnumKeyEx(network_class_key, index, subkey_name, &name_size, 
+                        NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
+            break; /* No more devices */
+        }
+        
+        /* Skip non-numeric device keys (like "Properties") */
+        if (!isdigit(subkey_name[0])) {
             continue;
         }
         
-        /* Get PCI information from registry */
-        HKEY adapter_key;
-        char registry_path[512];
-        snprintf_s(registry_path, sizeof(registry_path), _TRUNCATE,
-                   "SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\%04lu",
-                   current_adapter->IfIndex);
-        
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, registry_path, 0, KEY_READ, &adapter_key) == ERROR_SUCCESS) {
-            char hardware_id[256];
+        /* Open this device's registry key */
+        HKEY device_key;
+        if (RegOpenKeyEx(network_class_key, subkey_name, 0, KEY_READ, &device_key) == ERROR_SUCCESS) {
+            /* Check hardware ID */
+            char hardware_id[512];
             DWORD data_size = sizeof(hardware_id);
             DWORD data_type;
             
-            if (RegQueryValueEx(adapter_key, "MatchingDeviceId", NULL, &data_type,
-                               (LPBYTE)hardware_id, &data_size) == ERROR_SUCCESS) {
+            /* Try MatchingDeviceId first, then HardwareID */
+            if (RegQueryValueEx(device_key, "MatchingDeviceId", NULL, &data_type,
+                               (LPBYTE)hardware_id, &data_size) != ERROR_SUCCESS) {
+                data_size = sizeof(hardware_id);
+                RegQueryValueEx(device_key, "HardwareID", NULL, &data_type,
+                               (LPBYTE)hardware_id, &data_size);
+            }
+            
+            /* Check if this is an Intel device with matching device ID */
+            if (strstr(hardware_id, "VEN_8086") && strstr(hardware_id, "DEV_")) {
+                char *dev_id_str = strstr(hardware_id, "DEV_") + 4;
+                uint16_t found_device_id = (uint16_t)strtoul(dev_id_str, NULL, 16);
                 
-                /* Parse hardware ID for vendor and device */
-                if (strstr(hardware_id, "VEN_8086") && 
-                    strstr(hardware_id, "DEV_") &&
-                    strtoul(strstr(hardware_id, "DEV_") + 4, NULL, 16) == device_id) {
-                    
+                if (found_device_id == device_id) {
                     /* Found matching Intel adapter */
-                    strncpy_s(info->windows.adapter_name, sizeof(info->windows.adapter_name),
-                             current_adapter->AdapterName, _TRUNCATE);
-                    info->windows.adapter_index = current_adapter->IfIndex;
-                    info->windows.adapter_luid = current_adapter->Luid;
-                    
-                    /* Copy basic information */
                     info->vendor_id = INTEL_VENDOR_ID;
                     info->device_id = device_id;
                     
-                    /* Get adapter description */
-                    WideCharToMultiByte(CP_UTF8, 0, current_adapter->Description, -1,
-                                       info->description, sizeof(info->description), NULL, NULL);
+                    /* Get device description */
+                    data_size = sizeof(info->description);
+                    if (RegQueryValueEx(device_key, "DriverDesc", NULL, &data_type,
+                                       (LPBYTE)info->description, &data_size) != ERROR_SUCCESS) {
+                        _snprintf_s(info->description, sizeof(info->description), _TRUNCATE,
+                                   "Intel Device 0x%04X", device_id);
+                    }
+                    
+                    /* Get NetCfgInstanceId for adapter name */
+                    data_size = sizeof(info->windows.adapter_name);
+                    if (RegQueryValueEx(device_key, "NetCfgInstanceId", NULL, &data_type,
+                                       (LPBYTE)info->windows.adapter_name, &data_size) != ERROR_SUCCESS) {
+                        _snprintf_s(info->windows.adapter_name, sizeof(info->windows.adapter_name), _TRUNCATE,
+                                   "Intel_0x%04X", device_id);
+                    }
                     
                     found = true;
-                    RegCloseKey(adapter_key);
-                    break;
                 }
             }
-            RegCloseKey(adapter_key);
+            
+            RegCloseKey(device_key);
         }
     }
     
-    free(adapters);
+    RegCloseKey(network_class_key);
     
     if (!found) {
-        set_last_error("Intel adapter with device ID 0x%04x not found", device_id);
+        set_last_error("Intel device 0x%04X not found in system", device_id);
         return INTEL_HAL_ERROR_NO_DEVICE;
-    }
     
     printf("Windows: Found Intel adapter - %s\n", info->description);
     printf("  Adapter name: %s\n", info->windows.adapter_name);
+    
+    return INTEL_HAL_SUCCESS;
+}
     printf("  Interface index: %lu\n", info->windows.adapter_index);
     
     return INTEL_HAL_SUCCESS;
@@ -259,8 +258,8 @@ intel_hal_result_t intel_windows_read_timestamp(intel_device_t *device, intel_ti
     
     if (device->info.windows.has_native_timestamp) {
         /* Use NDIS native timestamp if available */
-        DWORD bytes_returned;
-        LARGE_INTEGER hw_timestamp;
+        DWORD bytes_returned = 0;
+        LARGE_INTEGER hw_timestamp = {0};
         
         if (DeviceIoControl(device->info.windows.adapter_handle,
                            IOCTL_NDIS_QUERY_GLOBAL_STATS,

@@ -11,9 +11,11 @@
 ******************************************************************************/
 
 #include "../include/intel_ethernet_hal.h"
+#include "../intel_hal_private.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 /* Platform-specific functions */
 #ifdef INTEL_HAL_WINDOWS
@@ -47,7 +49,7 @@ static void set_hal_error(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    vsnprintf_s(hal_last_error, sizeof(hal_last_error), _TRUNCATE, format, args);
+    _vsnprintf_s(hal_last_error, sizeof(hal_last_error), _TRUNCATE, format, args);
     va_end(args);
 }
 
@@ -405,7 +407,7 @@ bool intel_hal_has_capability(intel_device_t *device, uint32_t capability)
 const char *intel_hal_get_version(void)
 {
     static char version_string[32];
-    snprintf_s(version_string, sizeof(version_string), _TRUNCATE, "%d.%d.%d",
+    _snprintf_s(version_string, sizeof(version_string), _TRUNCATE, "%d.%d.%d",
                INTEL_ETHERNET_HAL_VERSION_MAJOR,
                INTEL_ETHERNET_HAL_VERSION_MINOR,
                INTEL_ETHERNET_HAL_VERSION_PATCH);

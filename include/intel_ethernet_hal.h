@@ -107,7 +107,7 @@ typedef struct intel_device intel_device_t;
 #ifdef INTEL_HAL_WINDOWS
 typedef struct {
     HANDLE adapter_handle;
-    LUID adapter_luid;
+    IF_LUID adapter_luid;
     DWORD adapter_index;
     char adapter_name[256];
     NDIS_TIMESTAMP_CAPABILITIES timestamp_caps;

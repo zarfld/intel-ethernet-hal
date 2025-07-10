@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
         if (info->windows.has_native_timestamp) {
             printf("    Hardware Clock: %s\n", 
                    info->windows.timestamp_caps.HardwareClockFrequencyHz ? "YES" : "NO");
-            printf("    Software Timestamp: %s\n",
-                   info->windows.timestamp_caps.SoftwareTimestampFlags ? "YES" : "NO");
+            printf("    Hardware Frequency: %I64u Hz\n",
+                   info->windows.timestamp_caps.HardwareClockFrequencyHz);
             printf("    Cross Timestamp: %s\n",
                    info->windows.timestamp_caps.CrossTimestamp ? "YES" : "NO");
         }
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
                 printf("  Testing timestamp read...\n");
                 intel_timestamp_t timestamp;
                 if (intel_hal_read_timestamp(device, &timestamp) == INTEL_HAL_SUCCESS) {
-                    printf("  ✅ Current timestamp: %lu.%09u\n", 
+                    printf("  ✅ Current timestamp: %I64u.%09u\n", 
                            timestamp.seconds, timestamp.nanoseconds);
                 } else {
                     printf("  ⚠️  Timestamp read failed: %s\n", intel_hal_get_last_error());
