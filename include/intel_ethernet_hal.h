@@ -78,6 +78,10 @@ typedef enum {
 #define INTEL_CAP_MDIO                     (1 << 7)   /* MDIO PHY access */
 #define INTEL_CAP_DMA                      (1 << 8)   /* Direct Memory Access */
 #define INTEL_CAP_NATIVE_OS                (1 << 9)   /* Native OS integration */
+#define INTEL_CAP_VLAN_FILTER             (1 << 10)  /* 802.1Q VLAN filtering */
+#define INTEL_CAP_QOS_PRIORITY             (1 << 11)  /* 802.1p QoS priority mapping */
+#define INTEL_CAP_AVB_SHAPING              (1 << 12)  /* AVB Credit-Based Shaper */
+#define INTEL_CAP_ADVANCED_QOS             (1 << 13)  /* Advanced QoS features */
 
 /* Error Codes */
 typedef enum {
@@ -151,6 +155,122 @@ typedef struct {
     bool link_up;
     bool timestamp_enabled;
 } intel_interface_info_t;
+
+/* ============================================================================
+ * VLAN and QoS Data Structures
+ * ============================================================================ */
+
+/**
+ * @brief VLAN tag structure for 802.1Q support
+ */
+typedef struct intel_vlan_tag {
+    uint16_t vlan_id;     /**< VLAN ID (0-4095) */
+    uint8_t priority;     /**< Priority (0-7) for 802.1p */
+    uint8_t dei;          /**< Drop Eligible Indicator */
+} intel_vlan_tag_t;
+
+/**
+ * @brief Credit-Based Shaper configuration for AVB
+ */
+typedef struct intel_cbs_config {
+    bool enabled;         /**< Enable/disable CBS */
+    uint32_t send_slope;  /**< Send slope in bytes per second */
+    uint32_t idle_slope;  /**< Idle slope in bytes per second */
+    uint32_t hi_credit;   /**< High credit limit */
+    uint32_t lo_credit;   /**< Low credit limit */
+    uint8_t traffic_class; /**< Traffic class (0-7) */
+} intel_cbs_config_t;
+
+/**
+ * @brief QoS priority mapping structure
+ */
+typedef struct intel_qos_mapping {
+    uint8_t priority;     /**< 802.1p priority (0-7) */
+    uint8_t traffic_class; /**< Traffic class (0-7) */
+    uint32_t bandwidth_percent; /**< Bandwidth allocation percentage */
+} intel_qos_mapping_t;
+
+/* ============================================================================
+ * VLAN and QoS API Functions
+ * ============================================================================ */
+
+/**
+ * @brief Configure VLAN filtering on device
+ * 
+ * @param[in] device Device handle
+ * @param[in] vlan_id VLAN ID to filter (0-4095)
+ * @param[in] enable Enable or disable filtering for this VLAN
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_configure_vlan_filter(intel_device_t *device, uint16_t vlan_id, bool enable);
+
+/**
+ * @brief Set VLAN tag for device
+ * 
+ * @param[in] device Device handle
+ * @param[in] vlan_tag VLAN tag configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_set_vlan_tag(intel_device_t *device, const intel_vlan_tag_t *vlan_tag);
+
+/**
+ * @brief Get current VLAN tag from device
+ * 
+ * @param[in] device Device handle
+ * @param[out] vlan_tag Current VLAN tag configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_get_vlan_tag(intel_device_t *device, intel_vlan_tag_t *vlan_tag);
+
+/**
+ * @brief Configure priority mapping for QoS
+ * 
+ * @param[in] device Device handle
+ * @param[in] priority 802.1p priority (0-7)
+ * @param[in] traffic_class Traffic class (0-7)
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_configure_priority_mapping(intel_device_t *device, uint8_t priority, uint8_t traffic_class);
+
+/**
+ * @brief Configure Credit-Based Shaper for AVB
+ * 
+ * @param[in] device Device handle
+ * @param[in] traffic_class Traffic class (0-7)
+ * @param[in] cbs_config CBS configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_configure_cbs(intel_device_t *device, uint8_t traffic_class, const intel_cbs_config_t *cbs_config);
+
+/**
+ * @brief Get current CBS configuration
+ * 
+ * @param[in] device Device handle
+ * @param[in] traffic_class Traffic class (0-7)
+ * @param[out] cbs_config Current CBS configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_get_cbs_config(intel_device_t *device, uint8_t traffic_class, intel_cbs_config_t *cbs_config);
+
+/**
+ * @brief Configure bandwidth allocation for traffic classes
+ * 
+ * @param[in] device Device handle
+ * @param[in] traffic_class Traffic class (0-7)
+ * @param[in] bandwidth_percent Bandwidth percentage (0-100)
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_configure_bandwidth_allocation(intel_device_t *device, uint8_t traffic_class, uint32_t bandwidth_percent);
+
+/**
+ * @brief Set rate limiting for traffic class
+ * 
+ * @param[in] device Device handle
+ * @param[in] traffic_class Traffic class (0-7)
+ * @param[in] rate_mbps Rate limit in Mbps
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_set_rate_limit(intel_device_t *device, uint8_t traffic_class, uint32_t rate_mbps);
 
 /**
  * @brief Initialize the Intel Ethernet HAL
@@ -278,6 +398,10 @@ const char *intel_hal_get_version(void);
  * @return Human-readable error message
  */
 const char *intel_hal_get_last_error(void);
+
+/* AVB Traffic Classes */
+#define INTEL_AVB_CLASS_A                  6  /* Class A - highest priority */
+#define INTEL_AVB_CLASS_B                  5  /* Class B - medium priority */
 
 #ifdef __cplusplus
 }
