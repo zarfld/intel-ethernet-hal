@@ -83,6 +83,18 @@ typedef enum {
 #define INTEL_CAP_AVB_SHAPING              (1 << 12)  /* AVB Credit-Based Shaper */
 #define INTEL_CAP_ADVANCED_QOS             (1 << 13)  /* Advanced QoS features */
 
+/* TSN-specific capability aliases for compatibility */
+#define INTEL_CAP_BASIC_IEEE1588           INTEL_CAP_BASIC_1588
+#define INTEL_CAP_ENHANCED_TIMESTAMPING    INTEL_CAP_ENHANCED_TS
+#define INTEL_CAP_TSN_TIME_AWARE_SHAPER    INTEL_CAP_TSN_TAS
+#define INTEL_CAP_TSN_FRAME_PREEMPTION     INTEL_CAP_TSN_FP
+
+/* Device family aliases for compatibility */
+#define INTEL_DEVICE_FAMILY_I210           INTEL_FAMILY_I210
+#define INTEL_DEVICE_FAMILY_I219           INTEL_FAMILY_I219
+#define INTEL_DEVICE_FAMILY_I225           INTEL_FAMILY_I225
+#define INTEL_DEVICE_FAMILY_I226           INTEL_FAMILY_I226
+
 /* Error Codes */
 typedef enum {
     INTEL_HAL_SUCCESS = 0,
@@ -94,7 +106,8 @@ typedef enum {
     INTEL_HAL_ERROR_DEVICE_BUSY = -6,
     INTEL_HAL_ERROR_TIMEOUT = -7,
     INTEL_HAL_ERROR_HARDWARE = -8,
-    INTEL_HAL_ERROR_OS_SPECIFIC = -9
+    INTEL_HAL_ERROR_OS_SPECIFIC = -9,
+    INTEL_HAL_ERROR_DEVICE_IO = -10
 } intel_hal_result_t;
 
 /* Timestamp Structure */
@@ -384,6 +397,84 @@ intel_hal_result_t intel_hal_get_capabilities(intel_device_t *device, uint32_t *
  * @return true if supported, false otherwise
  */
 bool intel_hal_has_capability(intel_device_t *device, uint32_t capability);
+
+/* ============================================================================
+ * TSN (Time-Sensitive Networking) Functions
+ * ============================================================================ */
+
+/* Time-Aware Shaper Configuration */
+typedef struct {
+    uint32_t gate_control_list_length;  /* Number of gate control entries */
+    uint64_t cycle_time;                /* Gate cycle time in nanoseconds */
+    uint64_t base_time;                 /* Base time for gate schedule */
+    struct {
+        uint8_t gate_states;            /* Gate states (bit field) */
+        uint32_t time_interval;         /* Time interval in nanoseconds */
+    } gate_control_list[8];             /* Maximum 8 entries */
+} intel_tas_config_t;
+
+/* Frame Preemption Configuration */
+typedef struct {
+    uint8_t preemptible_queues;         /* Bit field of preemptible queues */
+    uint32_t additional_fragment_size;  /* Additional fragment size */
+    bool verify_disable;                /* Disable verification */
+    uint32_t verify_time;               /* Verification time in microseconds */
+} intel_frame_preemption_config_t;
+
+/* Timed Transmission Packet */
+typedef struct {
+    void *packet_data;                  /* Packet data */
+    size_t packet_length;               /* Packet length */
+    uint64_t launch_time;               /* Launch time in nanoseconds */
+    uint8_t queue;                      /* Queue number */
+} intel_timed_packet_t;
+
+/**
+ * @brief Configure Time-Aware Shaper (IEEE 802.1Qbv)
+ * 
+ * @param[in] device Device handle
+ * @param[in] config TAS configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_setup_time_aware_shaper(intel_device_t *device, const intel_tas_config_t *config);
+
+/**
+ * @brief Configure Frame Preemption (IEEE 802.1Qbu)
+ * 
+ * @param[in] device Device handle  
+ * @param[in] config Frame preemption configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_setup_frame_preemption(intel_device_t *device, const intel_frame_preemption_config_t *config);
+
+/**
+ * @brief Transmit packet with precise timing (LAUNCHTIME)
+ * 
+ * @param[in] device Device handle
+ * @param[in] packet Timed packet configuration
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_xmit_timed_packet(intel_device_t *device, const intel_timed_packet_t *packet);
+
+/**
+ * @brief Get Time-Aware Shaper status
+ * 
+ * @param[in] device Device handle
+ * @param[out] enabled Whether TAS is currently enabled
+ * @param[out] current_time Current gate schedule time
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_get_tas_status(intel_device_t *device, bool *enabled, uint64_t *current_time);
+
+/**
+ * @brief Get Frame Preemption status
+ * 
+ * @param[in] device Device handle
+ * @param[out] enabled Whether frame preemption is enabled
+ * @param[out] active_queues Currently active preemptible queues
+ * @return INTEL_HAL_SUCCESS on success, error code otherwise
+ */
+intel_hal_result_t intel_hal_get_frame_preemption_status(intel_device_t *device, bool *enabled, uint8_t *active_queues);
 
 /**
  * @brief Get HAL version string
