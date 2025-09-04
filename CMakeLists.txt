@@ -37,7 +37,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Intel AVB integration - include the required source files
 set(INTEL_AVB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/intel_avb)
 set(INTEL_AVB_SOURCES
+    ${INTEL_AVB_DIR}/lib/intel_i210.c
+    ${INTEL_AVB_DIR}/lib/intel_i217.c
+    ${INTEL_AVB_DIR}/lib/intel_i219.c
     ${INTEL_AVB_DIR}/lib/intel_i225.c
+    ${INTEL_AVB_DIR}/lib/intel_i226.c
     ${INTEL_AVB_DIR}/lib/intel_common.c
     ${INTEL_AVB_DIR}/lib/intel.c
     ${INTEL_AVB_DIR}/lib/intel_windows.c
