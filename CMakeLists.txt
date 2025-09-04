@@ -34,10 +34,24 @@ endif()
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+# Intel AVB integration - include the required source files
+set(INTEL_AVB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/intel_avb)
+set(INTEL_AVB_SOURCES
+    ${INTEL_AVB_DIR}/lib/intel_i225.c
+    ${INTEL_AVB_DIR}/lib/intel_common.c
+    ${INTEL_AVB_DIR}/lib/intel.c
+    ${INTEL_AVB_DIR}/lib/intel_windows.c
+)
+
+# Include Intel AVB headers
+include_directories(${INTEL_AVB_DIR}/lib)
+include_directories(${INTEL_AVB_DIR}/include)
+
 # Common source files
 set(COMMON_SOURCES
     src/common/intel_device.c
     src/hal/intel_hal.c
+    ${INTEL_AVB_SOURCES}
 )
 
 # Platform-specific sources
