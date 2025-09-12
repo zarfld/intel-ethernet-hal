@@ -1,4 +1,16 @@
-# Copilot Coding Agent Instructions for Intel Ethernet HAL
+---
+applyTo: '**'
+---
+
+# Intel Ethernet HAL Copilot Instructions
+
+## Component Overview
+
+Intel Ethernet HAL is the Hardware Abstraction Layer that provides unified, cross-platform access to Intel Ethernet adapter timestamping and TSN capabilities. This component is the PRIMARY interface between Service Layer components (like gPTP) and Intel hardware.
+
+**Architecture Position**: Hardware Abstraction Layer (Primary Intel Interface)
+**Primary Responsibility**: Cross-platform abstraction for Intel I210/I219/I225/I226 timestamping and TSN features via intel-ethernet-hal.h API
+**Critical Role**: Bridge between Service Layer protocols and intel_avb via intel.h API
 
 ## Working principles
 -- ensure you understand the architecture and patterns before coding
@@ -11,6 +23,9 @@
 -- Always reference the exact Intel datasheet section or spec version when implementing register access.
 -- Validate all hardware reads/writes with range checks or masks from the specification.
 -- Every function must have a Doxygen comment explaining purpose, parameters, return values, and hardware context.
+-- Use portable printf format macros (PRIu64, PRId64, PRIu32) to prevent Windows MSVC assertion dialogs
+-- Never bypass intel_avb layer - always use intel.h API to intel_avb driver interface
+-- This is the PRIMARY Intel hardware interface - Service Layer components should use intel-ethernet-hal.h API, NOT lib/common/hal/
 -- no duplicate or redundant implementations to avoid inconsistencies and confusion; use centralized, reusable functions instead
 -- no ad-hoc file copies (e.g., *_fixed, *_new, *_correct); refactor in place step-by-step to avoid breakage
 -- Clean submit rules:
@@ -26,6 +41,27 @@
 -- Design modules so that changes in one module do not require changes in unrelated modules. Avoid dependencies that cause single changes to break multiple areas.
 -- Design components for reuse where practical, but prioritize correctness and domain fit over forced generalization.
 -- Prefer incremental modification of existing code over reimplementation; adapt existing functions instead of creating redundant new ones
+
+## CRITICAL: Architectural Position in OpenAvnu
+
+### Hardware Integration Chain (CORRECT INTERFACES)
+```
+Service Layer (gPTP, AVDECC, etc.)
+    ↓ (intel-ethernet-hal.h API)
+Intel Ethernet HAL ← YOU ARE HERE
+    ↓ (intel.h API)
+intel_avb (Driver Interface)
+    ↓ (avb_ioctl.h IOCTL-interface)
+NDISIntelFilterDriver (Kernel Driver)
+    ↓ (register access)
+Intel NIC Hardware (I210/I219/I225/I226)
+```
+
+### PRIMARY Interface Requirements
+- **Service Layer Integration**: gPTP and other components use intel-ethernet-hal.h API, not generic abstractions
+- **NEVER bypass intel_avb**: All hardware access must go through intel.h API to intel_avb layer
+- **Cross-platform consistency**: Provide identical intel-ethernet-hal.h API behavior on Windows NDIS and Linux PTP/PHC
+- **Thread safety**: All public API functions must be thread-safe for multi-threaded Service Layer components
 
 ## Project Overview
 - **Purpose:** Cross-platform hardware abstraction layer for Intel Ethernet adapters (I210, I219, I225, I226) with native Windows NDIS and Linux PTP integration.
