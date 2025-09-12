@@ -12,6 +12,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
@@ -95,8 +97,8 @@ int main(int argc, char* argv[]) {
     intel_timestamp_t timestamp1;
     result = intel_hal_read_timestamp(device, &timestamp1);
     if (result == INTEL_HAL_SUCCESS) {
-        printf("Initial timestamp: %llu.%09u\n", 
-               (unsigned long long)timestamp1.seconds, timestamp1.nanoseconds);
+        printf("Initial timestamp: %" PRIu64 ".%09u\n", 
+               timestamp1.seconds, timestamp1.nanoseconds);
     } else {
         printf("Failed to read initial timestamp (expected if disabled): %d\n", result);
     }
@@ -123,8 +125,8 @@ int main(int argc, char* argv[]) {
         result = intel_hal_read_timestamp(device, &timestamp);
         
         if (result == INTEL_HAL_SUCCESS) {
-            printf("Timestamp %d: %llu.%09u\n", i + 1,
-                   (unsigned long long)timestamp.seconds, timestamp.nanoseconds);
+            printf("Timestamp %d: %" PRIu64 ".%09u\n", i + 1,
+                   timestamp.seconds, timestamp.nanoseconds);
         } else {
             printf("❌ Failed to read timestamp %d: %d\n", i + 1, result);
         }
@@ -146,9 +148,9 @@ int main(int argc, char* argv[]) {
             uint64_t diff_ns = (ns2 > ns1) ? (ns2 - ns1) : (ns1 - ns2);
             
             printf("Timestamp precision test:\n");
-            printf("  Reading 1: %llu.%09u\n", (unsigned long long)ts1.seconds, ts1.nanoseconds);
-            printf("  Reading 2: %llu.%09u\n", (unsigned long long)ts2.seconds, ts2.nanoseconds);
-            printf("  Difference: %llu ns\n", (unsigned long long)diff_ns);
+            printf("  Reading 1: %" PRIu64 ".%09u\n", ts1.seconds, ts1.nanoseconds);
+            printf("  Reading 2: %" PRIu64 ".%09u\n", ts2.seconds, ts2.nanoseconds);
+            printf("  Difference: %" PRIu64 " ns\n", diff_ns);
             
             if (diff_ns < 1000000) {  // Less than 1ms difference
                 printf("✅ Good timestamp precision (< 1ms difference)\n");
@@ -170,8 +172,8 @@ int main(int argc, char* argv[]) {
         if (result != INTEL_HAL_SUCCESS) {
             printf("✅ Timestamp reading correctly fails when disabled: %d\n", result);
         } else {
-            printf("⚠️  Timestamp reading still works after disable: %llu.%09u\n",
-                   (unsigned long long)disabled_ts.seconds, disabled_ts.nanoseconds);
+            printf("⚠️  Timestamp reading still works after disable: %" PRIu64 ".%09u\n",
+                   disabled_ts.seconds, disabled_ts.nanoseconds);
         }
     } else {
         printf("❌ Failed to disable timestamping: %d\n", result);

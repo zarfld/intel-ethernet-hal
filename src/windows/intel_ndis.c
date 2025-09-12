@@ -59,7 +59,7 @@ static intel_hal_result_t query_ndis_timestamp_caps(intel_device_t *device)
                                NULL, OPEN_EXISTING, 0, NULL);
     
     if (adapter_handle == INVALID_HANDLE_VALUE) {
-        set_last_error("Failed to open NDIS adapter handle: %lu", GetLastError());
+        set_last_error("Failed to open NDIS adapter handle: %u", (unsigned int)GetLastError());
         return INTEL_HAL_ERROR_ACCESS_DENIED;
     }
     
@@ -79,7 +79,7 @@ static intel_hal_result_t query_ndis_timestamp_caps(intel_device_t *device)
             return INTEL_HAL_SUCCESS;
         }
         
-        set_last_error("NDIS timestamp capability query failed: %lu", error);
+        set_last_error("NDIS timestamp capability query failed: %u", (unsigned int)error);
         return INTEL_HAL_ERROR_OS_SPECIFIC;
     }
     
@@ -189,7 +189,7 @@ static intel_hal_result_t find_intel_adapter_by_device_id(uint16_t device_id,
     
     return INTEL_HAL_SUCCESS;
 }
-    printf("  Interface index: %lu\n", info->windows.adapter_index);
+    printf("  Interface index: %u\n", (unsigned int)info->windows.adapter_index);
     
     return INTEL_HAL_SUCCESS;
 }
