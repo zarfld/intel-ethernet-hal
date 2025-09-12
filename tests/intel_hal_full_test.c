@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include <inttypes.h>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -101,8 +102,8 @@ int main(void) {
                     bool ts_ok = true;
                     for (int t = 0; t < 5; ++t) {
                         if (intel_hal_read_timestamp(dev, &ts[t]) == INTEL_HAL_SUCCESS) {
-                            fprintf(log, "    [OK] Timestamp[%d]: %llu.%09u\n",
-                                t, (unsigned long long)ts[t].seconds, ts[t].nanoseconds);
+                            fprintf(log, "    [OK] Timestamp[%d]: %" PRIu64 ".%09u\n",
+                                t, ts[t].seconds, ts[t].nanoseconds);
                         } else {
                             fprintf(log, "    [FAIL] Timestamp[%d] konnte nicht gelesen werden: %s\n", t, intel_hal_get_last_error());
                             ts_ok = false;

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <inttypes.h>
 
 /* Include intel_avb for hardware register access */
 #include "../../../lib/intel_avb/lib/intel.h"
@@ -443,7 +444,7 @@ intel_hal_result_t intel_hal_set_timestamp(intel_device_t *device, const intel_t
         return INTEL_HAL_ERROR_NOT_SUPPORTED;
     }
     
-    printf("HAL: Setting timestamp to %lu.%09u for device 0x%04x\n",
+    printf("HAL: Setting timestamp to %" PRIu64 ".%09u for device 0x%04x\n",
            timestamp->seconds, timestamp->nanoseconds, device->info.device_id);
     
     /* Platform-specific timestamp setting would go here */
@@ -714,8 +715,8 @@ intel_hal_result_t intel_hal_setup_time_aware_shaper(intel_device_t *device, con
     }
     
     printf("Configuring Time-Aware Shaper:\n");
-    printf("  Cycle Time: %llu ns\n", (unsigned long long)config->cycle_time);
-    printf("  Base Time: %llu ns\n", (unsigned long long)config->base_time);
+    printf("  Cycle Time: %" PRIu64 " ns\n", config->cycle_time);
+    printf("  Base Time: %" PRIu64 " ns\n", config->base_time);
     printf("  Gate Control List Length: %u\n", config->gate_control_list_length);
     
     for (uint32_t i = 0; i < config->gate_control_list_length && i < 8; i++) {
@@ -836,7 +837,7 @@ intel_hal_result_t intel_hal_xmit_timed_packet(intel_device_t *device, const int
     
     printf("Transmitting timed packet:\n");
     printf("  Length: %zu bytes\n", packet->packet_length);
-    printf("  Launch Time: %llu ns\n", (unsigned long long)packet->launch_time);
+    printf("  Launch Time: %" PRIu64 " ns\n", packet->launch_time);
     printf("  Queue: %u\n", packet->queue);
     
     // Check for LAUNCHTIME support
@@ -893,8 +894,8 @@ intel_hal_result_t intel_hal_get_tas_status(intel_device_t *device, bool *enable
         *current_time = 0;
     }
     
-    printf("TAS Status: %s, Current Time: %llu ns\n", 
-           *enabled ? "Enabled" : "Disabled", (unsigned long long)*current_time);
+    printf("TAS Status: %s, Current Time: %" PRIu64 " ns\n", 
+           *enabled ? "Enabled" : "Disabled", *current_time);
     
     return INTEL_HAL_SUCCESS;
 }
