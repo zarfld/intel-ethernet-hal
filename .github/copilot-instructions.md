@@ -104,6 +104,39 @@ Intel NIC Hardware (I210/I219/I225/I226)
   - OpenAvnu: Add as submodule, link via CMake
   - Windows driver: Integrate with WinIo, Intel Driver Kit, or custom NDIS filter
 
+## Build and Testing
+
+### **🔧 Build Scripts:**
+- **`build_windows.bat`** - Windows build automation with proper Visual Studio setup
+- **CMake integration** - Standard CMake workflow for cross-platform builds
+
+### **📁 Expected Directory Structure:**
+```
+intel-ethernet-hal/
+├── src/
+│   ├── hal/intel_hal.c          ← Core HAL implementation
+│   └── windows/intel_ndis.c     ← Windows NDIS integration
+├── include/intel_ethernet_hal.h  ← PRIMARY API (Service Layer interface)
+├── intel.h                      ← intel_avb bridge API
+├── build_windows.bat            ← Windows build script
+├── examples/                    ← Integration examples
+│   └── hal_enable_timestamping.c
+├── tests/                       ← Validation tests
+│   └── intel_hal_full_test.c
+└── build/                       ← CMake build output
+```
+
+### **⚠️ Critical Build Dependencies:**
+1. **intel_avb library** must be available for intel.h API
+2. **Windows SDK** for NDIS OID operations  
+3. **Portable format macros** throughout codebase (PRIu64, PRId64, PRIu32)
+
+### **🔍 Testing Strategy:**
+- **Hardware Validation**: All tests must run on actual Intel adapters
+- **Cross-Platform**: Validate Windows and Linux implementations
+- **API Consistency**: Ensure intel-ethernet-hal.h provides consistent interface
+- **Error Handling**: Test failure modes and recovery patterns
+
 ## External Dependencies
 - **CMake** (cross-platform build)
 - **Windows:** Visual Studio 2019/2022, WinIo (optional)
